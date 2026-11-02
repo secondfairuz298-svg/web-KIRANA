@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KIRANA - Konseling Interaktif, Rekapitulasi, Asesmen & Naungan Aman</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#5D4037">
+  <meta name="description" content="Platform Bimbingan Konseling Sekolah & Direktori Konselor Profesional Independen">
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22KIRANA%22%2C%22short_name%22%3A%22KIRANA%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FDFBF7%22%2C%22theme_color%22%3A%22%235D4037%22%7D">
+
+  <!-- Lucide Icons & Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QR Code Generator Lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: {
+              50: '#FDFCF7',
+              100: '#F9F5EC',
+              200: '#F3EBD8',
+              300: '#E8DCBF',
+              400: '#DECBA5'
+            },
+            cocoa: {
+              500: '#8D6E63',
+              600: '#6D4C41',
+              700: '#5D4037',
+              800: '#4E342E',
+              900: '#3E2723'
+            },
+            terracotta: '#D35400',
+            sage: '#607274'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #FDFCF7;
+      color: #3E2723;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #DECBA5;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cocoa-500 selection:text-white">
+
+  <!-- ================= NOTIFIKASI TOAST GLOBAL ================= -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform transition-all duration-300 translate-y-[-100px] opacity-0 bg-cocoa-800 text-cream-50 px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 border border-cocoa-600">
+    <i id="toast-icon" data-lucide="bell" class="w-5 h-5 text-cream-300"></i>
+    <span id="toast-message" class="text-sm font-medium">Notifikasi</span>
+  </div>
+
+  <!-- ================= NAVBAR ================= -->
+  <header class="bg-cream-100 border-b border-cream-300 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('home')">
+        <div class="w-10 h-10 rounded-full bg-cocoa-700 flex items-center justify-center text-cream-100 font-bold shadow">
+          <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xl font-black tracking-wider text-cocoa-800">KIRANA</span>
+          <p class="text-[10px] text-cocoa-600 font-semibold tracking-tighter uppercase">Konseling, Rekapitulasi & Asesmen</p>
+        </div>
+      </div>
+
+      <div id="nav-actions" class="flex items-center space-x-3">
+        <!-- Injected via JavaScript based on session -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ROUTER CONTAINER ================= -->
+  <main id="app-container" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+    <!-- Konten halaman dinamis dimuat di sini -->
+  </main>
+
+  <!-- ================= MODAL GLOBAL (ROOM/VIDEO/CALL) ================= -->
+  <div id="modal-container" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-content" class="bg-cream-50 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-cream-300 max-h-[90vh] overflow-y-auto custom-scroll relative">
+      <!-- Diisi secara dinamis -->
+    </div>
+  </div>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-cream-200 border-t border-cream-300 py-6 text-center text-xs text-cocoa-600">
+    <p class="font-medium">© 2026 KIRANA — Ruang Aman, Pulih, dan Tumbuh Bersama.</p>
+    <p class="mt-1 text-[11px] text-cocoa-500">PWA Ready • Dapat diinstal langsung di Android, iOS, & Desktop.</p>
+  </footer>
+
+  <!-- ================= APPLICATION LOGIC ENGINE ================= -->
+  <script>
+    // --- DATABASE MOCK & PERSISTENCE (LocalStorage) ---
+    const DB_KEY = "KIRANA_DATA_STORE_V1";
+    const SESSION_KEY = "KIRANA_ACTIVE_USER";
+
+    function getDB() {
+      const defaultDB = {
+        users: [
+          {
+            email: "gurubk@kirana.sch.id",
+            name: "Dra. Siti Rahmah, M.Psi.",
+            role: "guru_bk",
+            photo: "",
+            isAlsoCounselor: true,
+            counselorBio: "Berpengalaman 12+ tahun dalam bimbingan karir, dinamika keluarga, dan krisis remaja.",
+            counselorRate: "Rp 150.000 / Sesi",
+            portfolio: ["Sertifikasi Konselor Remaja ABKIN 2024", "Jurnal Penanganan Bullying 2023"],
+            rooms: [
+              { id: "ROOM-10A", name: "Kelas X-IPA 1", code: "KIRANA-10A" },
+              { id: "ROOM-10B", name: "Kelas X-IPA 2", code: "KIRANA-10B" },
+              { id: "ROOM-11A", name: "Kelas XI-IPS 1", code: "KIRANA-11A" },
+              { id: "ROOM-12A", name: "Kelas XII-IPA 1", code: "KIRANA-12A" },
+              { id: "ROOM-12B", name: "Kelas XII-IPS 2", code: "KIRANA-12B" }
+            ],
+            schedules: []
+          },
+          {
+            email: "konselor@kirana.id",
+            name: "Budi Santoso, S.Psi., M.A.",
+            role: "konselor",
+            photo: "",
+            counselorBio: "Spesialis Cognitive Behavioral Therapy (CBT), kecemasan sosial, dan manajemen stres kerja.",
+            counselorRate: "Rp 200.000 / Sesi",
+            portfolio: ["Lisensi HIMPSI No. 4921/2022", "Jurnal Regulasi Emosi Dewasa Muda (2024)"],
+            schedules: []
+          },
+          {
+            email: "siswa@kirana.sch.id",
+            name: "Andi Pratama",
+            nisn: "0088921201",
+            role: "siswa",
+            photo: "",
+            joinedRoomCode: "KIRANA-10A",
+            points: 100,
+            pointHistory: [
+              { date: "2026-10-15", change: "+10", reason: "Juara 2 Lomba Debat Bahasa", by: "Dra. Siti Rahmah" },
+              { date: "2026-10-28", change: "-15", reason: "Terlambat apel pagi 3 kali berturut-turut", by: "Dra. Siti Rahmah" }
+            ],
+            peerPhotos: [],
+            assessmentResults: { mbti: "ENFJ", talent: "Verbal-Linguistik & Sosial", learningStyle: "Kinestetik & Auditori" }
+          },
+          {
+            email: "klien@gmail.com",
+            name: "Rina Maharani",
+            role: "klien",
+            photo: "",
+            assessmentResults: { mbti: "INFJ", mentalHealth: "Stres Ringan (Kelelahan Kerja)" }
+          }
+        ],
+        meetings: [
+          { id: "CONF-890", name: "Sesi Parenting & Mental Remaja", pass: "kirana123", host: "Dra. Siti Rahmah, M.Psi." }
+        ],
+        chatMessages: []
+      };
+
+      const stored = localStorage.getItem(DB_KEY);
+      if (!stored) {
+        localStorage.setItem(DB_KEY, JSON.stringify(defaultDB));
+        return defaultDB;
+      }
+      return JSON.parse(stored);
+    }
+
+    function saveDB(db) {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+    }
+
+    function getCurrentUser() {
+      const email = localStorage.getItem(SESSION_KEY);
+      if (!email) return null;
+      const db = getDB();
+      return db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+    }
+
+    function setCurrentUser(email) {
+      localStorage.setItem(SESSION_KEY, email);
+    }
+
+    function clearSession() {
+      localStorage.removeItem(SESSION_KEY);
+    }
+
+    // --- TOAST HELPER ---
+    function showToast(message, icon = "bell") {
+      const toast = document.getElementById("toast");
+      const msg = document.getElementById("toast-message");
+      const ico = document.getElementById("toast-icon");
+      msg.innerText = message;
+      ico.setAttribute("data-lucide", icon);
+      lucide.createIcons();
+
+      toast.classList.remove("translate-y-[-100px]", "opacity-0");
+      setTimeout(() => {
+        toast.classList.add("translate-y-[-100px]", "opacity-0");
+      }, 4000);
+    }
+
+    // --- ROUTER & NAVIGATION ---
+    function navigateTo(view, params = {}) {
+      const container = document.getElementById("app-container");
+      const user = getCurrentUser();
+      renderNavbar(user);
+
+      switch(view) {
+        case "auth":
+          renderAuthView(container);
+          break;
+        case "profile":
+          renderProfileView(container, user);
+          break;
+        case "directory":
+          renderDirectoryView(container, user);
+          break;
+        case "conference":
+          renderConferenceView(container, user);
+          break;
+        case "direct_chat":
+          renderDirectChatView(container, user, params.targetEmail);
+          break;
+        case "home":
+        default:
+          if (!user) {
+            renderLandingView(container);
+          } else if (user.role === "guru_bk") {
+            renderGuruBKDashboard(container, user);
+          } else if (user.role === "siswa") {
+            renderSiswaDashboard(container, user);
+          } else if (user.role === "konselor") {
+            renderKonselorDashboard(container, user);
+          } else if (user.role === "klien") {
+            renderKlienDashboard(container, user);
+          }
+          break;
+      }
+      lucide.createIcons();
+      window.scrollTo(0, 0);
+    }
+
+    function renderNavbar(user) {
+      const navActions = document.getElementById("nav-actions");
+      if (!user) {
+        navActions.innerHTML = `
+          <button onclick="navigateTo('auth')" class="px-4 py-2 text-sm font-semibold text-cream-50 bg-cocoa-700 hover:bg-cocoa-800 rounded-lg shadow transition">
+            Masuk / Daftar
+          </button>
+        `;
+      } else {
+        const avatar = user.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=8D6E63&textColor=FDFBF7`;
+        navActions.innerHTML = `
+          <button onclick="navigateTo('conference')" title="Ruang Meeting Daring" class="p-2 text-cocoa-700 hover:bg-cream-200 rounded-lg transition">
+            <i data-lucide="video" class="w-5 h-5"></i>
+          </button>
+          <button onclick="navigateTo('directory')" title="Cari Konselor" class="p-2 text-cocoa-700 hover:bg-cream-200 rounded-lg transition">
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </button>
+          <div onclick="navigateTo('profile')" class="flex items-center space-x-2 cursor-pointer bg-cream-200/60 p-1.5 rounded-full hover:bg-cream-300/50 transition">
+            <img src="${avatar}" alt="avatar" class="w-7 h-7 rounded-full object-cover border border-cocoa-600">
+            <span class="text-xs font-semibold text-cocoa-800 hidden sm:inline pr-2">${user.name.split(' ')[0]}</span>
+          </div>
+          <button onclick="logout()" title="Keluar" class="p-2 text-red-700 hover:bg-red-50 rounded-lg transition">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+          </button>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    // --- LANDING PAGE ---
+    function renderLandingView(container) {
+      container.innerHTML = `
+        <div class="py-12 px-4 max-w-4xl mx-auto text-center space-y-8">
+          <div class="inline-flex items-center space-x-2 bg-cream-200 px-4 py-1.5 rounded-full text-xs font-semibold text-cocoa-800">
+            <i data-lucide="shield-check" class="w-4 h-4 text-cocoa-700"></i>
+            <span>Ruang Konseling & Naungan Psikologis Terintegrasi</span>
+          </div>
+          <h1 class="text-4xl sm:text-5xl font-black text-cocoa-900 leading-tight">
+            Kesejahteraan Mental & Karakter Sekolah Dalam Satu Sentuhan.
+          </h1>
+          <p class="text-base sm:text-lg text-cocoa-600 max-w-2xl mx-auto">
+            KIRANA menghubungkan Guru BK, Siswa, Konselor Profesional Mandiri, dan Masyarakat Umum dalam ekosistem konseling yang aman, hangat, serta mudah diakses.
+          </p>
+          <div class="flex flex-wrap justify-center gap-4 pt-4">
+            <button onclick="navigateTo('auth')" class="px-7 py-3.5 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 font-bold rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+              Mulai Sekarang (Gratis)
+            </button>
+            <button onclick="navigateTo('directory')" class="px-7 py-3.5 bg-cream-200 hover:bg-cream-300 text-cocoa-800 font-bold rounded-xl border border-cream-400 transition">
+              Cari Konselor Terdaftar
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-12 text-left">
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="school" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Guru BK & Siswa</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Room kelas otomatis, barcode scanner masuk kelas, gamifikasi poin keaktifan, dan rekapitulasi poin pelanggaran/prestasi.</p>
+            </div>
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="brain-circuit" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Asesmen Terstandar</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Tes Kepribadian (MBTI), Minat & Bakat, Rekomendasi Cara Belajar, serta Tes Kesehatan Mental komprehensif.</p>
+            </div>
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="badge-dollar-sign" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Konselor Mandiri & Red Card</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Direktori terbuka untuk umum, transparansi tarif layanan, portofolio ilmiah, serta opsi peran ganda untuk Guru BK.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- AUTHENTICATION VIEW ---
+    function renderAuthView(container) {
+      container.innerHTML = `
+        <div class="max-w-md mx-auto bg-cream-100 p-8 rounded-2xl border border-cream-300 shadow-md">
+          <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-cocoa-900">Masuk / Pendaftaran</h2>
+            <p class="text-xs text-cocoa-600 mt-1">Cukup masukkan email Anda. Akun Anda tersimpan secara otomatis dan persisten.</p>
+          </div>
+
+          <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Peran Pengguna</label>
+              <select id="auth-role" onchange="toggleAuthFields()" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+                <option value="guru_bk">Guru BK (Sekolah)</option>
+                <option value="siswa">Siswa</option>
+                <option value="konselor">Konselor Independen</option>
+                <option value="klien">Klien Umum</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Nama Lengkap & Gelar</label>
+              <input type="text" id="auth-name" required placeholder="Contoh: Sarah Azhari, M.Psi." class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <div id="field-nisn" class="hidden">
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Nomor Induk (NISN/NIM)</label>
+              <input type="text" id="auth-nisn" placeholder="Contoh: 009871625" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Alamat Email</label>
+              <input type="email" id="auth-email" required placeholder="nama@email.com" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 font-bold rounded-lg shadow transition mt-2">
+              Lanjutkan Masuk / Buat Akun
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    function toggleAuthFields() {
+      const role = document.getElementById("auth-role").value;
+      const nisnField = document.getElementById("field-nisn");
+      if (role === "siswa") {
+        nisnField.classList.remove("hidden");
+      } else {
+        nisnField.classList.add("hidden");
+      }
+    }
+
+    function handleAuth(e) {
+      e.preventDefault();
+      const role = document.getElementById("auth-role").value;
+      const name = document.getElementById("auth-name").value.trim();
+      const email = document.getElementById("auth-email").value.trim().toLowerCase();
+      const nisn = document.getElementById("auth-nisn")?.value.trim() || "";
+
+      const db = getDB();
+      let user = db.users.find(u => u.email.toLowerCase() === email);
+
+      if (!user) {
+        // Buat Akun Baru
+        user = {
+          email,
+          name,
+          role,
+          photo: "",
+          portfolio: [],
+          schedules: []
+        };
+        if (role === "guru_bk") {
+          user.isAlsoCounselor = false;
+          user.rooms = [
+            { id: "R1", name: "Kelas X-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R2", name: "Kelas X-2", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R3", name: "Kelas XI-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R4", name: "Kelas XI-2", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R5", name: "Kelas XII-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` }
+          ];
+        } else if (role === "siswa") {
+          user.nisn = nisn;
+          user.joinedRoomCode = "";
+          user.points = 100;
+          user.pointHistory = [{ date: new Date().toISOString().split("T")[0], change: "+100", reason: "Poin awal selamat datang", by: "Sistem" }];
+          user.peerPhotos = [];
+          user.assessmentResults = {};
+        } else if (role === "konselor") {
+          user.counselorBio = "Menyediakan layanan konseling empatik dan berbasis bukti.";
+          user.counselorRate = "Rp 150.000 / Sesi";
+        } else if (role === "klien") {
+          user.assessmentResults = {};
+        }
+
+        db.users.push(user);
+        saveDB(db);
+        showToast("Akun baru berhasil didaftarkan!", "user-plus");
+      } else {
+        showToast(`Selamat datang kembali, ${user.name}!`, "check-circle");
+      }
+
+      setCurrentUser(user.email);
+      navigateTo("home");
+    }
+
+    function logout() {
+      clearSession();
+      showToast("Berhasil keluar dari akun.", "log-out");
+      navigateTo("home");
+    }
+
+    // --- PROFIL & HAPUS AKUN ---
+    function renderProfileView(container, user) {
+      const avatar = user.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=8D6E63&textColor=FDFBF7`;
+      
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto bg-cream-100 p-8 rounded-2xl border border-cream-300 shadow-sm space-y-6">
+          <div class="flex items-center space-x-5">
+            <img src="${avatar}" class="w-20 h-20 rounded-full object-cover border-2 border-cocoa-700 shadow">
+            <div>
+              <h2 class="text-2xl font-bold text-cocoa-900">${user.name}</h2>
+              <p class="text-xs font-semibold uppercase text-cocoa-600 bg-cream-200 inline-block px-2 py-0.5 rounded mt-1">${user.role.replace('_', ' ')}</p>
+              <p class="text-xs text-cocoa-500 mt-1">${user.email}</p>
+            </div>
+          </div>
+
+          <hr class="border-cream-300">
+
+          <!-- Upload / Ganti Foto Profil -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-cocoa-700 uppercase">Ganti Foto Profil (URL Gambar)</label>
+            <div class="flex gap-2">
+              <input type="text" id="profile-photo-input" value="${user.photo || ''}" placeholder="https://domain.com/foto.jpg" class="flex-1 bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800">
+              <button onclick="updateProfilePhoto()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-sm font-semibold rounded-lg hover:bg-cocoa-800">Simpan Foto</button>
+            </div>
+          </div>
+
+          <!-- Portofolio Khusus Konselor / Guru BK -->
+          ${(user.role === 'konselor' || user.role === 'guru_bk') ? `
+            <div class="space-y-4 pt-2">
+              <h3 class="font-bold text-cocoa-800 text-sm uppercase">Portofolio & Publikasi Ilmiah</h3>
+              <p class="text-xs text-cocoa-600">Tambahkan sertifikat atau jurnal ilmiah yang memperkuat kredibilitas Anda.</p>
+              <div class="flex gap-2">
+                <input type="text" id="portfolio-item-input" placeholder="Judul Sertifikat atau Publikasi Jurnal..." class="flex-1 bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800">
+                <button onclick="addPortfolioItem()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-sm font-semibold rounded-lg hover:bg-cocoa-800">Tambah</button>
+              </div>
+              <ul class="space-y-2 pt-2">
+                ${(user.portfolio || []).map((p, idx) => `
+                  <li class="flex items-center justify-between text-xs bg-cream-50 p-3 rounded-lg border border-cream-300">
+                    <span class="font-medium text-cocoa-800">${p}</span>
+                    <button onclick="removePortfolioItem(${idx})" class="text-red-600 hover:text-red-800 text-xs font-bold">Hapus</button>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          <!-- Opsi Peran Ganda Guru BK -->
+          ${user.role === 'guru_bk' ? `
+            <div class="bg-cream-200 p-5 rounded-xl border border-cream-400 space-y-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="font-bold text-cocoa-900 text-sm">Opsi Konselor Independen (Peran Ganda)</h4>
+                  <p class="text-xs text-cocoa-600">Aktifkan untuk menerima klien umum berbayar (Red Card) di luar jam dinas sekolah.</p>
+                </div>
+                <input type="checkbox" id="dual-role-toggle" onchange="toggleDualRole()" ${user.isAlsoCounselor ? 'checked' : ''} class="w-5 h-5 accent-cocoa-700">
+              </div>
+              ${user.isAlsoCounselor ? `
+                <div class="space-y-3 pt-2">
+                  <div>
+                    <label class="block text-xs font-semibold text-cocoa-700">Biaya Konsultasi Pribadi (Red Card):</label>
+                    <input type="text" id="dual-rate" value="${user.counselorRate || 'Rp 150.000 / Sesi'}" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2 text-xs text-cocoa-800">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-semibold text-cocoa-700">Pendekatan & Deskripsi Konseling:</label>
+                    <textarea id="dual-bio" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2 text-xs text-cocoa-800">${user.counselorBio || ''}</textarea>
+                  </div>
+                  <button onclick="saveDualRoleDetails()" class="px-3 py-1.5 bg-cocoa-700 text-cream-50 text-xs font-semibold rounded-lg">Simpan Info Konselor</button>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          <!-- Danger Zone: Hapus Akun -->
+          <div class="pt-6 border-t border-red-200">
+            <h4 class="text-xs font-bold text-red-700 uppercase mb-2">Zona Berbahaya</h4>
+            <p class="text-xs text-cocoa-600 mb-3">Jika akun dihapus, seluruh data profil Anda dibersihkan. Anda dapat mendaftar kembali kapan saja menggunakan email yang sama.</p>
+            <button onclick="deleteAccount()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow">
+              Hapus Akun Saya Permanen
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateProfilePhoto() {
+      const photo = document.getElementById("profile-photo-input").value.trim();
+      const db = getDB();
+      const user = getCurrentUser();
+      const idx = db.users.findIndex(u => u.email === user.email);
+      if (idx !== -1) {
+        db.users[idx].photo = photo;
+        saveDB(db);
+        showToast("Foto profil diperbarui!", "camera");
+        navigateTo("profile");
+      }
+    }
+
+    function addPortfolioItem() {
+      const input = document.getElementById("portfolio-item-input");
+      const text = input.value.trim();
+      if (!text) return;
+      const db = getDB();
+      const user = getCurrentUser();
+      const idx = db.users.findIndex(u => u.email === user.email);
+      if (idx !== -1) {
+        db.users[idx].portfolio = db.users[idx].portfolio || [];
+        db.users[idx].portfolio.push(text);
+        saveDB(db);
+        showToast("Portofolio berhasil ditambahkan!", "award");
+        navigateTo("profile");
+      }
+    }
+
+    function removePortfolioItem(pIdx) {
+      const db = getDB();
+      const user = getCurrentUser();
+      const idx = db.users.findIndex(u => u.email === user.email);
+      if (idx !== -1) {
+        db.users[idx].portfolio.splice(pIdx, 1);
+        saveDB(db);
+        navigateTo("profile");
+      }
+    }
+
+    function toggleDualRole() {
+      const checked = document.getElementById("dual-role-toggle").checked;
+      const db = getDB();
+      const user = getCurrentUser();
+      const idx = db.users.findIndex(u => u.email === user.email);
+      if (idx !== -1) {
+        db.users[idx].isAlsoCounselor = checked;
+        if (checked && !db.users[idx].counselorRate) {
+          db.users[idx].counselorRate = "Rp 150.000 / Sesi";
+          db.users[idx].counselorBio = "Guru BK berdedikasi melayani konseling holistik.";
+        }
+        saveDB(db);
+        showToast(checked ? "Peran ganda konselor diaktifkan!" : "Peran ganda dimatikan.", "check");
+        navigateTo("profile");
+      }
+    }
+
+    function saveDualRoleDetails() {
+      const rate = document.getElementById("dual-rate").value;
+      const bio = document.getElementById("dual-bio").value;
+      const db = getDB();
+      const user = getCurrentUser();
+      const idx = db.users.findIndex(u => u.email === user.email);
+      if (idx !== -1) {
+        db.users[idx].counselorRate = rate;
+        db.users[idx].counselorBio = bio;
+        saveDB(db);
+        showToast("Data konselor pribadi disimpan!", "check");
+      }
+    }
+
+    function deleteAccount() {
+      if (!confirm("Apakah Anda yakin ingin menghapus akun? Anda dapat mendaftar kembali nanti.")) return;
+      const user = getCurrentUser();
+      const db = getDB();
+      db.users = db.users.filter(u => u.email !== user.email);
+      saveDB(db);
+      clearSession();
+      showToast("Akun Anda telah dihapus secara permanen.", "trash-2");
+      navigateTo("home");
+    }
+
+    // --- DASHBOARD GURU BK ---
+    function renderGuruBKDashboard(container, user) {
+      const db = getDB();
+      // Siswa yang berada di room guru ini
+      const myRoomCodes = (user.rooms || []).map(r => r.code);
+      const students = db.users.filter(u => u.role === "siswa" && myRoomCodes.includes(u.joinedRoomCode));
+
+      container.innerHTML = `
+        <div class="space-y-8">
+          <!-- Banner -->
+          <div class="bg-gradient-to-r from-cocoa-800 to-cocoa-600 text-cream-50 p-6 sm:p-8 rounded-3xl shadow flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <span class="bg-cream-200 text-cocoa-900 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">Dashboard Resmi Sekolah</span>
+              <h1 class="text-2xl sm:text-3xl font-black mt-2">${user.name}</h1>
+              <p class="text-xs sm:text-sm text-cream-200 mt-1">Kelola 5 ruang kelas terpisah, pantau hasil asesmen, dan atur poin kepribadian siswa.</p>
+            </div>
+            <button onclick="openScheduleModal()" class="px-5 py-2.5 bg-cream-100 hover:bg-cream-200 text-cocoa-800 font-bold rounded-xl text-xs sm:text-sm shadow transition">
+              + Jadwalkan Tatap Muka
+            </button>
+          </div>
+
+          <!-- Section Room & QR Code -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold text-cocoa-900 flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-5 h-5 text-cocoa-700"></i> Ruang Kelas Anda (Kapasitas: 5 Kelas)
+              </h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              ${(user.rooms || []).map((room, idx) => `
+                <div class="bg-cream-100 border border-cream-300 rounded-2xl p-5 shadow-sm space-y-4">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <h3 class="font-bold text-cocoa-900 text-base" id="room-name-lbl-${idx}">${room.name}</h3>
+                      <p class="text-[11px] text-cocoa-500 font-mono">Kode: ${room.code}</p>
+                    </div>
+                    <button onclick="editRoomName(${idx})" class="text-xs text-cocoa-700 hover:underline font-semibold flex items-center gap-1">
+                      <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+                    </button>
+                  </div>
+                  <div class="flex items-center justify-center bg-cream-50 p-4 rounded-xl border border-cream-200" id="qrcode-${idx}">
+                    <!-- QR code diinjeksi via script -->
+                  </div>
+                  <div class="flex gap-2">
+                    <button onclick="copyRoomLink('${room.code}')" class="flex-1 py-2 bg-cream-200 hover:bg-cream-300 text-cocoa-800 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 transition">
+                      <i data-lucide="copy" class="w-3.5 h-3.5"></i> Salin Tautan
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Siswa & Rekapitulasi Poin -->
+          <div>
+            <h2 class="text-xl font-bold text-cocoa-900 flex items-center gap-2 mb-4">
+              <i data-lucide="users" class="w-5 h-5 text-cocoa-700"></i> Rekapitulasi Siswa & Hasil Asesmen (${students.length} Siswa Terdaftar)
+            </h2>
+            <div class="bg-cream-100 rounded-2xl border border-cream-300 overflow-x-auto shadow-sm">
+              <table class="w-full text-left text-xs text-cocoa-800">
+                <thead class="bg-cream-200 text-cocoa-900 uppercase font-bold border-b border-cream-300">
+                  <tr>
+                    <th class="p-3.5">Nama & NISN</th>
+                    <th class="p-3.5">Kelas Tergabung</th>
+                    <th class="p-3.5">Hasil Asesmen (MBTI / Minat)</th>
+                    <th class="p-3.5">Akumulasi Poin</th>
+                    <th class="p-3.5 text-center">Kelola Poin</th>
+                    <th class="p-3.5 text-center">Aksi Konseling</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-cream-300">
+                  ${students.length === 0 ? `
+                    <tr>
+                      <td colspan="6" class="p-6 text-center text-cocoa-500">Belum ada siswa yang tergabung di dalam kelas Anda. Berikan kode QR di atas untuk bergabung.</td>
+                    </tr>
+                  ` : students.map(s => `
+                    <tr class="hover:bg-cream-200/50 transition">
+                      <td class="p-3.5 font-semibold">
+                        <div>${s.name}</div>
+                        <div class="text-[10px] text-cocoa-500 font-mono">NISN: ${s.nisn || '-'}</div>
+                      </td>
+                      <td class="p-3.5 font-mono">${s.joinedRoomCode}</td>
+                      <td class="p-3.5">
+                        <span class="inline-block bg-cocoa-200 px-2 py-0.5 rounded font-bold text-cocoa-900">${s.assessmentResults?.mbti || 'Belum Tes'}</span>
+                        <div class="text-[10px] text-cocoa-600 mt-0.5">${s.assessmentResults?.talent || 'Minat belum diasesmen'}</div>
+                      </td>
+                      <td class="p-3.5 font-bold ${s.points < 60 ? 'text-red-600' : 'text-cocoa-800'}">
+                        ${s.points} Pts
+                        ${s.points < 60 ? '<span class="block text-[10px] text-red-500 font-normal">Peringatan: Poin Rendah</span>' : ''}
+                      </td>
+                      <td class="p-3.5 text-center">
+                        <div class="flex justify-center gap-1.5">
+                          <button onclick="openPointAdjustmentModal('${s.email}', 1)" class="px-2 py-1 bg-green-700 text-white rounded text-[11px] font-bold hover:bg-green-800">+ Tambah</button>
+                          <button onclick="openPointAdjustmentModal('${s.email}', -1)" class="px-2 py-1 bg-red-700 text-white rounded text-[11px] font-bold hover:bg-red-800">- Turunkan</button>
+                        </div>
+                      </td>
+                      <td class="p-3.5 text-center">
+                        <button onclick="navigateTo('direct_chat', { targetEmail: '${s.email}' })" class="px-3 py-1 bg-cocoa-700 text-cream-50 rounded-lg text-xs font-semibold hover:bg-cocoa-800 flex items-center justify-center gap-1 mx-auto">
+                          <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> Hubungi
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Render QRCodes
+      setTimeout(() => {
+        (user.rooms || []).forEach((room, idx) => {
+          const el = document.getElementById(`qrcode-${idx}`);
+          if (el) {
+            el.innerHTML = "";
+            new QRCode(el, {
+              text: `kirana://join-room?code=${room.code}`,
+              width: 110,
+              height: 110,
+              colorDark: "#3E2723",
+              colorLight: "#FDFCF7"
+            });
+          }
+        });
+      }, 50);
+    }
+
+    function editRoomName(roomIdx) {
+      const user = getCurrentUser();
+      const current = user.rooms[roomIdx].name;
+      const newName = prompt("Ubah Nama Ruang/Kelas:", current);
+      if (newName && newName.trim() !== "") {
+        const db = getDB();
+        const uIdx = db.users.findIndex(u => u.email === user.email);
+        db.users[uIdx].rooms[roomIdx].name = newName.trim();
+        saveDB(db);
+        showToast("Nama ruang kelas berhasil diubah!", "check");
+        navigateTo("home");
+      }
+    }
+
+    function copyRoomLink(code) {
+      const link = `${window.location.origin}${window.location.pathname}?join=${code}`;
+      navigator.clipboard.writeText(link).then(() => {
+        showToast("Tautan masuk room berhasil disalin ke clipboard!", "copy");
+      });
+    }
+
+    // Modal Kelola Poin Guru BK
+    function openPointAdjustmentModal(studentEmail, dir) {
+      const db = getDB();
+      const student = db.users.find(u => u.email === studentEmail);
+      const isAdd = dir > 0;
+
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <h3 class="text-lg font-bold text-cocoa-900 mb-2">${isAdd ? 'Naikkan Poin Prestasi' : 'Turunkan Poin Pelanggaran'}</h3>
+        <p class="text-xs text-cocoa-600 mb-4">Siswa: <strong>${student.name}</strong> (${student.nisn})</p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Jumlah Poin (${isAdd ? '+' : '-'}):</label>
+            <input type="number" id="point-delta" min="1" max="100" value="10" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Alasan Tertulis Wajib:</label>
+            <textarea id="point-reason" placeholder="Contoh: Mengikuti karya ilmiah remaja tingkat provinsi..." class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800" rows="3"></textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-cream-200 text-cocoa-800 text-xs font-bold rounded-lg">Batal</button>
+            <button onclick="submitPointAdjustment('${studentEmail}', ${isAdd})" class="px-4 py-2 ${isAdd ? 'bg-green-700 hover:bg-green-800' : 'bg-red-700 hover:bg-red-800'} text-white text-xs font-bold rounded-lg">Simpan Penyesuaian</button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function submitPointAdjustment(studentEmail, isAdd) {
+      const delta = parseInt(document.getElementById("point-delta").value) || 0;
+      const reason = document.getElementById("point-reason").value.trim();
+      if (!reason) {
+        alert("Harap masukkan alasan perubahan poin!");
+        return;
+      }
+
+      const db = getDB();
+      const sIdx = db.users.findIndex(u => u.email === studentEmail);
+      const user = getCurrentUser();
+
+      if (sIdx !== -1) {
+        const changeVal = isAdd ? delta : -delta;
+        db.users[sIdx].points = Math.max(0, (db.users[sIdx].points || 0) + changeVal);
+        db.users[sIdx].pointHistory = db.users[sIdx].pointHistory || [];
+        db.users[sIdx].pointHistory.unshift({
+          date: new Date().toISOString().split("T")[0],
+          change: (isAdd ? "+" : "") + changeVal,
+          reason: reason,
+          by: user.name
+        });
+
+        // Notifikasi otomatis jika turun drastis
+        if (!isAdd && delta >= 20) {
+          db.users[sIdx].alertMessage = `Peringatan: Poin Anda turun sebanyak ${delta} poin karena: "${reason}". Harap menghadap Guru BK.`;
+        }
+
+        saveDB(db);
+        closeModal();
+        showToast("Poin siswa berhasil diperbarui!", "award");
+        navigateTo("home");
+      }
+    }
+
+    // Modal Jadwal Tatap Muka
+    function openScheduleModal() {
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <h3 class="text-lg font-bold text-cocoa-900 mb-2">Jadwalkan Konseling Tatap Muka</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Tanggal & Waktu:</label>
+            <input type="datetime-local" id="sched-time" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Topik / Keperluan:</label>
+            <input type="text" id="sched-topic" placeholder="Konseling penjurusan karir..." class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Tempat:</label>
+            <input type="text" id="sched-place" value="Ruang BK Utama (Gedung A Lantai 2)" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-cream-200 text-cocoa-800 text-xs font-bold rounded-lg">Batal</button>
+            <button onclick="submitSchedule()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg">Simpan Jadwal</button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function submitSchedule() {
+      const time = document.getElementById("sched-time").value;
+      const topic = document.getElementById("sched-topic").value;
+      const place = document.getElementById("sched-place").value;
+      if (!time || !topic) return;
+
+      const db = getDB();
+      const user = getCurrentUser();
+      const uIdx = db.users.findIndex(u => u.email === user.email);
+      db.users[uIdx].schedules = db.users[uIdx].schedules || [];
+      db.users[uIdx].schedules.push({ time, topic, place });
+      saveDB(db);
+      closeModal();
+      showToast("Jadwal tatap muka berhasil disimpan!", "calendar");
+    }
+
+    function closeModal() {
+      document.getElementById("modal-container").classList.add("hidden");
+    }
+
+    // --- DASHBOARD SISWA ---
+    function renderSiswaDashboard(container, user) {
+      if (user.alertMessage) {
+        showToast(user.alertMessage, "alert-triangle");
+      }
+
+      container.innerHTML = `
+        <div class="space-y-8">
+          <!-- Notifikasi Penurunan Poin Drastis -->
+          ${user.alertMessage ? `
+            <div class="bg-red-100 border-l-4 border-red-600 p-4 rounded-xl flex items-center justify-between text-red-900">
+              <div class="flex items-center space-x-3">
+                <i data-lucide="alert-octagon" class="w-6 h-6 text-red-600 flex-shrink-0"></i>
+                <span class="text-xs sm:text-sm font-semibold">${user.alertMessage}</span>
+              </div>
+              <button onclick="dismissAlert('${user.email}')" class="text-xs font-bold text-red-700 underline ml-2">Tutup</button>
+            </div>
+          ` : ''}
+
+          <!-- Header Siswa -->
+          <div class="bg-cream-100 border border-cream-300 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
+            <div class="flex items-center space-x-4">
+              <img src="${user.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}`}" class="w-16 h-16 rounded-full border-2 border-cocoa-700 object-cover shadow">
+              <div>
+                <span class="bg-cream-200 text-cocoa-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Siswa Terdaftar</span>
+                <h1 class="text-2xl font-black text-cocoa-900 mt-1">${user.name}</h1>
+                <p class="text-xs text-cocoa-600">NISN: ${user.nisn || '-'} • Room: <strong class="text-cocoa-800">${user.joinedRoomCode || 'Belum Bergabung'}</strong></p>
+              </div>
+            </div>
+            <div class="text-center sm:text-right bg-cream-200/60 p-4 rounded-2xl border border-cream-300 min-w-[150px]">
+              <span class="text-xs uppercase font-extrabold text-cocoa-600">Akumulasi Poin</span>
+              <p class="text-3xl font-black ${user.points < 60 ? 'text-red-600' : 'text-cocoa-800'}">${user.points} Pts</p>
+            </div>
+          </div>
+
+          <!-- Section Scanner QR & Masuk Room -->
+          ${!user.joinedRoomCode ? `
+            <div class="bg-cocoa-700 text-cream-50 p-6 rounded-2xl shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div class="space-y-1">
+                <h3 class="font-bold text-lg">Anda Belum Tergabung di Room Guru BK</h3>
+                <p class="text-xs text-cream-200">Pindai QR Code dari Guru BK atau masukkan kode ruang kelas untuk menghubungkan profil Anda.</p>
+              </div>
+              <button onclick="openScannerModal()" class="px-5 py-3 bg-cream-100 hover:bg-cream-200 text-cocoa-800 font-bold rounded-xl text-xs flex items-center gap-2 shadow">
+                <i data-lucide="qr-code" class="w-4 h-4"></i> Buka Scanner QR
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- Grid Menu Fitur Siswa -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Modul Asesmen -->
+            <div class="bg-cream-100 border border-cream-300 p-6 rounded-2xl shadow-sm space-y-4">
+              <div class="flex items-center space-x-3 text-cocoa-800">
+                <div class="p-2.5 bg-cream-200 rounded-xl"><i data-lucide="clipboard-check" class="w-6 h-6"></i></div>
+                <div>
+                  <h3 class="font-bold text-sm">Asesmen Psikologis</h3>
+                  <p class="text-[11px] text-cocoa-600">3 Modul Tes Resmi</p>
+                </div>
+              </div>
+              <div class="space-y-2 pt-2">
+                <button onclick="startAssessment('mbti')" class="w-full text-left p-3 rounded-xl bg-cream-50 hover:bg-cream-200 border border-cream-300 text-xs font-semibold flex justify-between items-center transition">
+                  <span>Tes Kepribadian (100 Soal - MBTI)</span>
+                  <span class="text-[10px] font-bold text-cocoa-600 uppercase">${user.assessmentResults?.mbti || 'Mulai'}</span>
+                </button>
+                <button onclick="startAssessment('talent')" class="w-full text-left p-3 rounded-xl bg-cream-50 hover:bg-cream-200 border border-cream-300 text-xs font-semibold flex justify-between items-center transition">
+                  <span>Tes Bakat & Minat (50 Soal)</span>
+                  <span class="text-[10px] font-bold text-cocoa-600 uppercase">${user.assessmentResults?.talent ? 'Selesai' : 'Mulai'}</span>
+                </button>
+                <button onclick="startAssessment('learningStyle')" class="w-full text-left p-3 rounded-xl bg-cream-50 hover:bg-cream-200 border border-cream-300 text-xs font-semibold flex justify-between items-center transition">
+                  <span>Rekomendasi Cara Belajar (50 Soal)</span>
+                  <span class="text-[10px] font-bold text-cocoa-600 uppercase">${user.assessmentResults?.learningStyle ? 'Selesai' : 'Mulai'}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Modul Gamifikasi Poin (Foto Teman Sebaya) -->
+            <div class="bg-cream-100 border border-cream-300 p-6 rounded-2xl shadow-sm space-y-4">
+              <div class="flex items-center space-x-3 text-cocoa-800">
+                <div class="p-2.5 bg-cream-200 rounded-xl"><i data-lucide="camera" class="w-6 h-6"></i></div>
+                <div>
+                  <h3 class="font-bold text-sm">Gamifikasi Keaktifan</h3>
+                  <p class="text-[11px] text-cocoa-600">Foto Bersama Teman Sebaya</p>
+                </div>
+              </div>
+              <p class="text-xs text-cocoa-600">Dapatkan +15 Poin keaktifan sosial dengan mengunggah momen kebersamaan dengan rekan sekolah.</p>
+              <button onclick="openPeerPhotoModal()" class="w-full py-2.5 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Unggah Foto & Teman
+              </button>
+              <div class="space-y-2 max-h-40 overflow-y-auto custom-scroll pt-2">
+                ${(user.peerPhotos || []).map(p => `
+                  <div class="flex items-center space-x-3 bg-cream-50 p-2 rounded-lg border border-cream-200">
+                    <img src="${p.url}" class="w-9 h-9 rounded object-cover">
+                    <div class="text-[11px]">
+                      <span class="font-bold text-cocoa-800">${p.friendName}</span>
+                      <p class="text-[10px] text-cocoa-500">${p.date} • +15 Pts</p>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Rekapitulasi Riwayat Poin -->
+            <div class="bg-cream-100 border border-cream-300 p-6 rounded-2xl shadow-sm space-y-4">
+              <div class="flex items-center space-x-3 text-cocoa-800">
+                <div class="p-2.5 bg-cream-200 rounded-xl"><i data-lucide="history" class="w-6 h-6"></i></div>
+                <div>
+                  <h3 class="font-bold text-sm">Riwayat Perubahan Poin</h3>
+                  <p class="text-[11px] text-cocoa-600">Transparansi Catatan BK</p>
+                </div>
+              </div>
+              <div class="space-y-2 max-h-56 overflow-y-auto custom-scroll">
+                ${(user.pointHistory || []).map(h => `
+                  <div class="p-2.5 rounded-lg bg-cream-50 border border-cream-300 text-xs space-y-1">
+                    <div class="flex justify-between items-center">
+                      <span class="font-bold ${h.change.startsWith('+') ? 'text-green-700' : 'text-red-700'}">${h.change} Poin</span>
+                      <span class="text-[10px] text-cocoa-500">${h.date}</span>
+                    </div>
+                    <p class="text-cocoa-700 font-medium text-[11px]">${h.reason}</p>
+                    <p class="text-[10px] text-cocoa-500">Oleh: ${h.by}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function dismissAlert(email) {
+      const db = getDB();
+      const idx = db.users.findIndex(u => u.email === email);
+      if (idx !== -1) {
+        delete db.users[idx].alertMessage;
+        saveDB(db);
+        navigateTo("home");
+      }
+    }
+
+    // Modal Scanner QR Siswa
+    function openScannerModal() {
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <h3 class="text-lg font-bold text-cocoa-900 mb-2">Pindai QR Code Ruang Guru BK</h3>
+        <p class="text-xs text-cocoa-600 mb-4">Arahkan kamera ke QR Code kelas atau masukkan kode room secara langsung.</p>
+        
+        <div class="bg-black/90 rounded-2xl h-52 flex flex-col items-center justify-center text-cream-200 relative overflow-hidden border-2 border-cocoa-600">
+          <i data-lucide="scan" class="w-16 h-16 animate-pulse text-cream-400 mb-2"></i>
+          <span class="text-xs tracking-wider uppercase font-semibold">Simulasi Scanner Aktif</span>
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <label class="block text-xs font-semibold text-cocoa-700">Atau Ketik Kode Kelas (Contoh: KIRANA-10A):</label>
+          <div class="flex gap-2">
+            <input type="text" id="manual-room-code" placeholder="KIRANA-XXXX" class="flex-1 bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800 font-mono uppercase">
+            <button onclick="submitJoinRoom()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg hover:bg-cocoa-800">Gabung</button>
+          </div>
+          <div class="flex justify-end pt-2">
+            <button onclick="closeModal()" class="px-4 py-1.5 bg-cream-200 text-cocoa-800 text-xs font-semibold rounded-lg">Batal</button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+      modal.classList.remove("hidden");
+    }
+
+    function submitJoinRoom() {
+      const code = document.getElementById("manual-room-code").value.trim().toUpperCase();
+      if (!code) return;
+
+      const db = getDB();
+      // Validasi apakah kode ada di sistem guru manapun
+      let roomFound = false;
+      for (const u of db.users) {
+        if (u.role === "guru_bk" && u.rooms) {
+          if (u.rooms.some(r => r.code === code)) {
+            roomFound = true;
+            break;
+          }
+        }
+      }
+
+      if (!roomFound) {
+        alert("Kode ruang kelas tidak ditemukan. Harap tanyakan pada Guru BK Anda.");
+        return;
+      }
+
+      const user = getCurrentUser();
+      const uIdx = db.users.findIndex(u => u.email === user.email);
+      db.users[uIdx].joinedRoomCode = code;
+      saveDB(db);
+      closeModal();
+      showToast(`Berhasil bergabung ke kelas ${code}!`, "check-circle");
+      navigateTo("home");
+    }
+
+    // Modal Foto Bersama Teman (Gamifikasi)
+    function openPeerPhotoModal() {
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <h3 class="text-lg font-bold text-cocoa-900 mb-2">Unggah Foto Bersama Rekan</h3>
+        <p class="text-xs text-cocoa-600 mb-4">Tambahkan foto dan nama rekan untuk meningkatkan poin keaktifan sosial (+15 Poin).</p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Nama Teman Sebaya / Adik / Kakak Kelas:</label>
+            <input type="text" id="peer-name" placeholder="Contoh: Dimas Bagaskara (Kelas XI)" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">URL Gambar / Foto:</label>
+            <input type="text" id="peer-photo-url" value="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=400&q=80" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-cream-200 text-cocoa-800 text-xs font-bold rounded-lg">Batal</button>
+            <button onclick="submitPeerPhoto()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg">Kirim & Klaim Poin</button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function submitPeerPhoto() {
+      const name = document.getElementById("peer-name").value.trim();
+      const url = document.getElementById("peer-photo-url").value.trim();
+      if (!name) return;
+
+      const db = getDB();
+      const user = getCurrentUser();
+      const uIdx = db.users.findIndex(u => u.email === user.email);
+
+      db.users[uIdx].peerPhotos = db.users[uIdx].peerPhotos || [];
+      db.users[uIdx].peerPhotos.unshift({
+        friendName: name,
+        url: url,
+        date: new Date().toISOString().split("T")[0]
+      });
+
+      // Bonus Poin
+      db.users[uIdx].points = (db.users[uIdx].points || 0) + 15;
+      db.users[uIdx].pointHistory.unshift({
+        date: new Date().toISOString().split("T")[0],
+        change: "+15",
+        reason: `Gamifikasi keaktifan sosial berfoto dengan: ${name}`,
+        by: "Sistem Otomatis"
+      });
+
+      saveDB(db);
+      closeModal();
+      showToast("Foto terunggah! Anda memperoleh +15 Poin.", "smile");
+      navigateTo("home");
+    }
+
+    // --- DASHBOARD KONSELOR (INDEPENDEN) ---
+    function renderKonselorDashboard(container, user) {
+      container.innerHTML = `
+        <div class="space-y-8">
+          <div class="bg-cream-100 border border-cream-300 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+            <div class="space-y-2">
+              <span class="bg-cocoa-700 text-cream-50 text-xs font-bold px-3 py-1 rounded-full uppercase">Konselor Mandiri</span>
+              <h1 class="text-3xl font-black text-cocoa-900">${user.name}</h1>
+              <p class="text-xs text-cocoa-600 max-w-xl">Profil Anda dipublikasikan secara langsung pada menu direktori terbuka KIRANA dan dapat dihubungi oleh semua klien.</p>
+            </div>
+            <div class="bg-cream-200 p-4 rounded-2xl border border-cream-300 text-center">
+              <span class="text-xs font-bold text-cocoa-700">Tarif Sesi Anda (Red Card)</span>
+              <p class="text-xl font-black text-cocoa-900 mt-1">${user.counselorRate || 'Belum Diatur'}</p>
+              <button onclick="navigateTo('profile')" class="mt-2 text-xs font-bold text-cocoa-700 underline">Ubah di Profil</button>
+            </div>
+          </div>
+
+          <!-- Portofolio & Jurnal Terdaftar -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300 space-y-4">
+              <h3 class="font-bold text-cocoa-900 flex items-center gap-2">
+                <i data-lucide="book-open" class="w-5 h-5 text-cocoa-700"></i> Publikasi & Jurnal Ilmiah
+              </h3>
+              <p class="text-xs text-cocoa-600">Dokumen dan karya ilmiah yang tampil di profil publik Anda:</p>
+              <ul class="space-y-2">
+                ${(user.portfolio || []).map(p => `
+                  <li class="text-xs bg-cream-50 p-3 rounded-lg border border-cream-200 font-medium text-cocoa-800 flex items-center gap-2">
+                    <i data-lucide="file-check" class="w-4 h-4 text-cocoa-600 flex-shrink-0"></i> ${p}
+                  </li>
+                `).join('')}
+              </ul>
+              <button onclick="navigateTo('profile')" class="text-xs font-bold text-cocoa-700 hover:underline">+ Kelola Portofolio</button>
+            </div>
+
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300 space-y-4">
+              <h3 class="font-bold text-cocoa-900 flex items-center gap-2">
+                <i data-lucide="message-square" class="w-5 h-5 text-cocoa-700"></i> Ruang Konseling & Pertemuan
+              </h3>
+              <p class="text-xs text-cocoa-600">Mulai panggilan tatap maya 1-on-1 atau buat sesi grup daring interaktif:</p>
+              <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="navigateTo('conference')" class="p-4 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 rounded-xl text-center font-bold text-xs shadow flex flex-col items-center justify-center gap-2">
+                  <i data-lucide="video" class="w-6 h-6"></i> Konferensi Video
+                </button>
+                <button onclick="navigateTo('directory')" class="p-4 bg-cream-200 hover:bg-cream-300 text-cocoa-900 rounded-xl text-center font-bold text-xs border border-cream-400 flex flex-col items-center justify-center gap-2">
+                  <i data-lucide="eye" class="w-6 h-6"></i> Pratinjau Direktori
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- DASHBOARD KLIEN UMUM ---
+    function renderKlienDashboard(container, user) {
+      container.innerHTML = `
+        <div class="space-y-8">
+          <div class="bg-cream-100 border border-cream-300 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+            <div>
+              <span class="bg-cream-200 text-cocoa-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Klien Terdaftar</span>
+              <h1 class="text-3xl font-black text-cocoa-900 mt-1">Halo, ${user.name}</h1>
+              <p class="text-xs sm:text-sm text-cocoa-600 mt-1">Jelajahi asesmen kepribadian atau temukan konselor independen terverifikasi.</p>
+            </div>
+            <button onclick="navigateTo('directory')" class="px-6 py-3 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 font-bold rounded-xl text-xs sm:text-sm shadow flex items-center gap-2">
+              <i data-lucide="search" class="w-4 h-4"></i> Cari Konselor Sekarang
+            </button>
+          </div>
+
+          <!-- Asesmen Klien -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-cream-100 border border-cream-300 p-6 rounded-2xl shadow-sm space-y-3">
+              <div class="flex items-center space-x-3 text-cocoa-800">
+                <i data-lucide="sparkles" class="w-6 h-6 text-cocoa-700"></i>
+                <h3 class="font-bold text-base">Tes Kepribadian (100 Soal - MBTI)</h3>
+              </div>
+              <p class="text-xs text-cocoa-600">Pahami kecenderungan alamiah, preferensi komunikasi, dan tipe kepribadian psikologis Anda.</p>
+              <div class="pt-2 flex justify-between items-center">
+                <span class="text-xs font-bold text-cocoa-700 uppercase">Hasil: ${user.assessmentResults?.mbti || 'Belum Ada'}</span>
+                <button onclick="startAssessment('mbti')" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-semibold rounded-lg hover:bg-cocoa-800">Ambil Tes</button>
+              </div>
+            </div>
+
+            <div class="bg-cream-100 border border-cream-300 p-6 rounded-2xl shadow-sm space-y-3">
+              <div class="flex items-center space-x-3 text-cocoa-800">
+                <i data-lucide="heart-pulse" class="w-6 h-6 text-cocoa-700"></i>
+                <h3 class="font-bold text-base">Mental Health Test (100 Soal)</h3>
+              </div>
+              <p class="text-xs text-cocoa-600">Skrining menyeluruh tingkat stres, kecemasan (anxiety), dan kelelahan mental harian.</p>
+              <div class="pt-2 flex justify-between items-center">
+                <span class="text-xs font-bold text-cocoa-700 uppercase">Hasil: ${user.assessmentResults?.mentalHealth || 'Belum Ada'}</span>
+                <button onclick="startAssessment('mentalHealth')" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-semibold rounded-lg hover:bg-cocoa-800">Ambil Tes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- ASESMEN ENGINE (SIMULASI TES PSIKOLOGI LENGKAP) ---
+    function startAssessment(type) {
+      let title = "";
+      let totalQuestions = 100;
+      let outcomes = [];
+
+      if (type === "mbti") {
+        title = "Tes Kepribadian MBTI (100 Soal)";
+        totalQuestions = 100;
+        outcomes = ["ENFJ", "INTJ", "INFP", "ESTJ", "ISFP", "ENTP"];
+      } else if (type === "talent") {
+        title = "Tes Bakat & Minat (50 Soal)";
+        totalQuestions = 50;
+        outcomes = ["Verbal & Komunikasi Publik", "Logika Matematika & Riset", "Seni Visual & Kreatif", "Interpersonal & Kepemimpinan"];
+      } else if (type === "learningStyle") {
+        title = "Tes Rekomendasi Cara Belajar (50 Soal)";
+        totalQuestions = 50;
+        outcomes = ["Visual & Mind Mapping", "Kinestetik & Praktik Lapangan", "Auditori & Diskusi Kelompok"];
+      } else if (type === "mentalHealth") {
+        title = "Mental Health Comprehensive Screening (100 Soal)";
+        totalQuestions = 100;
+        outcomes = ["Kondisi Mental Stabil & Prima", "Stres Ringan (Kelelahan Rutinitas)", "Kecemasan Sedang (Perlu Konseling)"];
+      }
+
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between border-b border-cream-300 pb-3">
+            <h3 class="font-bold text-cocoa-900 text-base">${title}</h3>
+            <span class="text-[10px] font-bold bg-cream-200 text-cocoa-800 px-2 py-0.5 rounded">${totalQuestions} Butir Instrumen</span>
+          </div>
+          <p class="text-xs text-cocoa-600">Jawablah secara jujur sesuai dorongan spontan Anda tanpa memikirkan jawaban yang 'paling benar'.</p>
+          
+          <div class="bg-cream-100 p-4 rounded-xl border border-cream-300 space-y-3">
+            <span class="text-[11px] font-bold text-cocoa-600 uppercase">Simulasi Soal Representatif:</span>
+            <p class="text-xs font-semibold text-cocoa-900">"Saat dihadapkan pada situasi baru yang belum pernah dialami, saya lebih mengandalkan intuisi spontan dibanding aturan baku."</p>
+            <div class="space-y-1.5 pt-1">
+              <label class="flex items-center space-x-2 text-xs text-cocoa-800 cursor-pointer">
+                <input type="radio" name="ans" checked class="accent-cocoa-700"> <span>Sangat Setuju</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-cocoa-800 cursor-pointer">
+                <input type="radio" name="ans" class="accent-cocoa-700"> <span>Cenderung Setuju</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-cocoa-800 cursor-pointer">
+                <input type="radio" name="ans" class="accent-cocoa-700"> <span>Cenderung Tidak Setuju</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-cocoa-800 cursor-pointer">
+                <input type="radio" name="ans" class="accent-cocoa-700"> <span>Sangat Tidak Setuju</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-cream-200 text-cocoa-800 text-xs font-semibold rounded-lg">Batal</button>
+            <button onclick="finalizeAssessment('${type}', '${outcomes[Math.floor(Math.random() * outcomes.length)]}')" class="px-5 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg shadow">
+              Kirim & Hitung Skor Akhir
+            </button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function finalizeAssessment(type, resultOutcome) {
+      const db = getDB();
+      const user = getCurrentUser();
+      const uIdx = db.users.findIndex(u => u.email === user.email);
+
+      db.users[uIdx].assessmentResults = db.users[uIdx].assessmentResults || {};
+      db.users[uIdx].assessmentResults[type] = resultOutcome;
+      saveDB(db);
+
+      closeModal();
+      showToast(`Asesmen Selesai! Output Anda: ${resultOutcome}`, "check-circle");
+      navigateTo("home");
+    }
+
+    // --- DIREKTORI TERBUKA KONSELOR (CARA CARI KONSELOR) ---
+    function renderDirectoryView(container, user) {
+      const db = getDB();
+      // Konselor Independen + Guru BK yang mengaktifkan peran ganda
+      const counselors = db.users.filter(u => u.role === "konselor" || (u.role === "guru_bk" && u.isAlsoCounselor));
+
+      container.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-black text-cocoa-900">Direktori Konselor Terdaftar</h1>
+              <p class="text-xs sm:text-sm text-cocoa-600">Pilih profesional pendamping untuk sesi konseling terpercaya dan terjaga kerahasiaannya.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${counselors.map(c => {
+              const avatar = c.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(c.name)}&backgroundColor=8D6E63&textColor=FDFBF7`;
+              return `
+                <div class="bg-cream-100 border border-cream-300 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                  <div class="space-y-3">
+                    <div class="flex items-center space-x-3">
+                      <img src="${avatar}" class="w-14 h-14 rounded-full object-cover border border-cocoa-700 shadow-sm">
+                      <div>
+                        <h3 class="font-bold text-cocoa-900 text-sm leading-snug">${c.name}</h3>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-cocoa-700 bg-cream-200 px-2 py-0.5 rounded">
+                          ${c.role === 'guru_bk' ? 'Guru BK & Konselor Privat' : 'Konselor Independen'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Red Card / Tarif Jasa -->
+                    <div class="bg-red-50 border border-red-200 text-red-900 p-2.5 rounded-xl flex items-center justify-between text-xs">
+                      <span class="font-semibold flex items-center gap-1"><i data-lucide="tag" class="w-3.5 h-3.5 text-red-700"></i> Tarif Layanan (Red Card):</span>
+                      <strong class="font-bold text-red-800">${c.counselorRate || 'Rp 150.000 / Sesi'}</strong>
+                    </div>
+
+                    <p class="text-xs text-cocoa-700 italic bg-cream-50 p-3 rounded-xl border border-cream-200">
+                      "${c.counselorBio || 'Siap mendampingi proses pemulihan dan penemuan potensi diri Anda.'}"
+                    </p>
+
+                    <!-- Portofolio -->
+                    ${(c.portfolio && c.portfolio.length > 0) ? `
+                      <div class="space-y-1">
+                        <span class="text-[10px] uppercase font-bold text-cocoa-600">Portofolio & Sertifikasi:</span>
+                        <ul class="text-[11px] text-cocoa-800 list-disc list-inside space-y-0.5">
+                          ${c.portfolio.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  <div class="pt-2">
+                    ${user ? `
+                      <button onclick="navigateTo('direct_chat', { targetEmail: '${c.email}' })" class="w-full py-2.5 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 text-xs font-bold rounded-xl shadow flex items-center justify-center gap-2 transition">
+                        <i data-lucide="message-square" class="w-4 h-4"></i> Mulai Konseling Pribadi
+                      </button>
+                    ` : `
+                      <button onclick="navigateTo('auth')" class="w-full py-2.5 bg-cream-300 hover:bg-cream-400 text-cocoa-900 text-xs font-bold rounded-xl shadow transition">
+                        Masuk Untuk Menghubungi
+                      </button>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // --- RUANG KONFERENSI VIDEO / ZOOM STYLE (GRUP) ---
+    function renderConferenceView(container, user) {
+      const db = getDB();
+      const meetings = db.meetings || [];
+
+      container.innerHTML = `
+        <div class="max-w-3xl mx-auto space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-2xl font-bold text-cocoa-900">Ruang Pertemuan Daring (In-App Video)</h1>
+              <p class="text-xs text-cocoa-600">Konferensi kelompok aman tanpa aplikasi tambahan pihak ketiga.</p>
+            </div>
+            <button onclick="openCreateMeetingModal()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-xl hover:bg-cocoa-800 shadow">
+              + Buat Room Baru
+            </button>
+          </div>
+
+          <!-- Video Stage / Canvas Stream Virtual -->
+          <div class="bg-cocoa-900 rounded-3xl p-6 text-cream-50 shadow-2xl relative overflow-hidden min-h-[350px] flex flex-col justify-between">
+            <div class="flex justify-between items-center z-10">
+              <span class="bg-red-600/80 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-white animate-ping"></span> Live Terenkripsi
+              </span>
+              <span id="active-room-indicator" class="text-xs font-mono text-cream-300">Room: Belum Terhubung</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 my-auto py-6" id="video-grid">
+              <div class="bg-cocoa-800/80 border border-cocoa-600 rounded-2xl h-40 flex flex-col items-center justify-center p-4 text-center">
+                <i data-lucide="user" class="w-10 h-10 text-cream-400 mb-1"></i>
+                <span class="text-xs font-bold text-cream-100">${user ? user.name : 'Anda'}</span>
+                <span class="text-[10px] text-cream-400">(Kamera Anda Aktif)</span>
+              </div>
+              <div class="bg-cocoa-800/80 border border-cocoa-600 rounded-2xl h-40 flex flex-col items-center justify-center p-4 text-center">
+                <i data-lucide="users" class="w-10 h-10 text-cream-400 mb-1"></i>
+                <span class="text-xs font-bold text-cream-100">Peserta Ruangan</span>
+                <span class="text-[10px] text-cream-400">(Menunggu interaksi...)</span>
+              </div>
+            </div>
+
+            <div class="flex justify-center items-center gap-4 z-10 pt-4 border-t border-cocoa-700">
+              <button onclick="toggleAudioCall()" id="btn-audio" class="p-3 bg-cream-200/20 hover:bg-cream-200/30 rounded-full text-cream-100 transition"><i data-lucide="mic" class="w-5 h-5"></i></button>
+              <button onclick="toggleVideoCall()" id="btn-video" class="p-3 bg-cream-200/20 hover:bg-cream-200/30 rounded-full text-cream-100 transition"><i data-lucide="video" class="w-5 h-5"></i></button>
+              <button onclick="leaveMeeting()" class="p-3 bg-red-600 hover:bg-red-700 rounded-full text-white shadow transition"><i data-lucide="phone-off" class="w-5 h-5"></i></button>
+            </div>
+          </div>
+
+          <!-- Daftar Room yang Tersedia -->
+          <div class="bg-cream-100 border border-cream-300 rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 class="font-bold text-cocoa-900 text-sm">Ruangan Yang Sedang Aktif</h3>
+            <div class="space-y-2">
+              ${meetings.map(m => `
+                <div class="p-3.5 bg-cream-50 rounded-xl border border-cream-200 flex items-center justify-between">
+                  <div>
+                    <h4 class="font-bold text-xs text-cocoa-900">${m.name}</h4>
+                    <p class="text-[11px] text-cocoa-500">Host: ${m.host} • ID: ${m.id}</p>
+                  </div>
+                  <button onclick="joinMeetingPrompt('${m.id}', '${m.pass}')" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg hover:bg-cocoa-800">
+                    Masuk Ruang
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openCreateMeetingModal() {
+      const user = getCurrentUser();
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <h3 class="text-lg font-bold text-cocoa-900 mb-2">Buat Pertemuan Daring Baru</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Nama / Topik Ruangan:</label>
+            <input type="text" id="meet-name" placeholder="Konseling Kelompok Kelas X..." class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-cocoa-700">Kata Sandi Ruangan (PIN):</label>
+            <input type="text" id="meet-pass" placeholder="Contoh: 1234" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-xs text-cocoa-800">
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2 bg-cream-200 text-cocoa-800 text-xs font-bold rounded-lg">Batal</button>
+            <button onclick="submitNewMeeting()" class="px-4 py-2 bg-cocoa-700 text-cream-50 text-xs font-bold rounded-lg">Buat & Mulai</button>
+          </div>
+        </div>
+      `;
+      modal.classList.remove("hidden");
+    }
+
+    function submitNewMeeting() {
+      const name = document.getElementById("meet-name").value.trim();
+      const pass = document.getElementById("meet-pass").value.trim();
+      if (!name) return;
+
+      const user = getCurrentUser();
+      const db = getDB();
+      const newMeet = {
+        id: `CONF-${Math.floor(100 + Math.random() * 900)}`,
+        name,
+        pass,
+        host: user.name
+      };
+
+      db.meetings.unshift(newMeet);
+      saveDB(db);
+      closeModal();
+      showToast(`Ruang ${newMeet.name} berhasil dibuat!`, "video");
+      navigateTo("conference");
+    }
+
+    function joinMeetingPrompt(id, pass) {
+      if (pass) {
+        const input = prompt("Masukkan kata sandi ruangan:");
+        if (input !== pass) {
+          alert("Kata sandi salah!");
+          return;
+        }
+      }
+      document.getElementById("active-room-indicator").innerText = `Room: ${id} (Terhubung)`;
+      showToast("Tersambung ke sesi konferensi video!", "video");
+    }
+
+    function toggleAudioCall() {
+      showToast("Mikrofon diubah (Mute/Unmute)", "mic");
+    }
+    function toggleVideoCall() {
+      showToast("Kamera diubah (On/Off)", "video");
+    }
+    function leaveMeeting() {
+      document.getElementById("active-room-indicator").innerText = "Room: Belum Terhubung";
+      showToast("Anda telah meninggalkan ruangan.", "phone-off");
+    }
+
+    // --- FITUR CHAT & CALL 1-ON-1 LANGSUNG ---
+    function renderDirectChatView(container, user, targetEmail) {
+      const db = getDB();
+      const targetUser = db.users.find(u => u.email.toLowerCase() === (targetEmail || "").toLowerCase());
+
+      if (!targetUser) {
+        container.innerHTML = `<div class="p-8 text-center text-xs text-cocoa-600">Penerima pesan tidak ditemukan. <button onclick="navigateTo('home')" class="underline font-bold text-cocoa-800">Kembali</button></div>`;
+        return;
+      }
+
+      // Ambil pesan antara user & targetUser
+      const myEmail = user.email.toLowerCase();
+      const themEmail = targetUser.email.toLowerCase();
+      const messages = (db.chatMessages || []).filter(m => 
+        (m.from === myEmail && m.to === themEmail) ||
+        (m.from === themEmail && m.to === myEmail)
+      );
+
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto bg-cream-100 rounded-3xl border border-cream-300 shadow-sm flex flex-col h-[75vh]">
+          <!-- Header Percakapan -->
+          <div class="p-4 border-b border-cream-300 flex items-center justify-between bg-cream-200/50 rounded-t-3xl">
+            <div class="flex items-center space-x-3">
+              <img src="${targetUser.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(targetUser.name)}`}" class="w-10 h-10 rounded-full border border-cocoa-700 object-cover">
+              <div>
+                <h3 class="font-bold text-sm text-cocoa-900">${targetUser.name}</h3>
+                <span class="text-[10px] text-green-700 font-bold flex items-center gap-1">● Online di KIRANA</span>
+              </div>
+            </div>
+            <!-- Fitur Direct Voice & Video Call 1-on-1 -->
+            <div class="flex items-center space-x-2">
+              <button onclick="startDirectCall('${targetUser.name}', 'voice')" title="Voice Call" class="p-2.5 bg-cream-100 hover:bg-cream-300 rounded-xl text-cocoa-800 transition">
+                <i data-lucide="phone" class="w-4 h-4"></i>
+              </button>
+              <button onclick="startDirectCall('${targetUser.name}', 'video')" title="Video Call" class="p-2.5 bg-cream-100 hover:bg-cream-300 rounded-xl text-cocoa-800 transition">
+                <i data-lucide="video" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Body Chat Box -->
+          <div id="chat-box" class="flex-1 p-4 overflow-y-auto custom-scroll space-y-3 bg-cream-50/50">
+            ${messages.length === 0 ? `
+              <div class="text-center text-xs text-cocoa-500 py-10">
+                Belum ada riwayat pesan. Mulai percakapan pribadi dengan aman di sini.
+              </div>
+            ` : messages.map(m => `
+              <div class="flex ${m.from === myEmail ? 'justify-end' : 'justify-start'}">
+                <div class="max-w-[80%] p-3 rounded-2xl text-xs ${m.from === myEmail ? 'bg-cocoa-700 text-cream-50 rounded-br-none' : 'bg-cream-200 text-cocoa-900 rounded-bl-none'} shadow-sm">
+                  <p class="leading-relaxed">${m.text}</p>
+                  <span class="text-[9px] block text-right mt-1 opacity-75">${m.time}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Input Footer -->
+          <div class="p-3 border-t border-cream-300 bg-cream-100 rounded-b-3xl flex gap-2">
+            <input type="text" id="chat-input" onkeypress="if(event.key==='Enter') sendChatMessage('${targetUser.email}')" placeholder="Ketik pesan konseling..." class="flex-1 bg-cream-50 border border-cream-400 rounded-xl p-2.5 text-xs text-cocoa-800 focus:outline-cocoa-600">
+            <button onclick="sendChatMessage('${targetUser.email}')" class="px-4 py-2.5 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 rounded-xl shadow transition">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      `;
+
+      setTimeout(() => {
+        const box = document.getElementById("chat-box");
+        if (box) box.scrollTop = box.scrollHeight;
+      }, 50);
+    }
+
+    function sendChatMessage(targetEmail) {
+      const input = document.getElementById("chat-input");
+      const text = input.value.trim();
+      if (!text) return;
+
+      const user = getCurrentUser();
+      const db = getDB();
+      db.chatMessages = db.chatMessages || [];
+      db.chatMessages.push({
+        from: user.email.toLowerCase(),
+        to: targetEmail.toLowerCase(),
+        text: text,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      saveDB(db);
+      input.value = "";
+      renderDirectChatView(document.getElementById("app-container"), user, targetEmail);
+    }
+
+    function startDirectCall(name, type) {
+      const modal = document.getElementById("modal-container");
+      const content = document.getElementById("modal-content");
+      content.innerHTML = `
+        <div class="text-center py-6 space-y-4">
+          <div class="w-20 h-20 rounded-full bg-cocoa-700 mx-auto flex items-center justify-center text-cream-100 shadow-xl animate-pulse">
+            <i data-lucide="${type === 'video' ? 'video' : 'phone-call'}" class="w-10 h-10"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-cocoa-900">${type === 'video' ? 'Panggilan Video' : 'Panggilan Suara'}</h3>
+            <p class="text-xs text-cocoa-600">Menghubungi: <strong>${name}</strong>...</p>
+          </div>
+          <div class="flex justify-center gap-4 pt-4">
+            <button onclick="closeModal()" class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow">
+              Akhiri Panggilan
+            </button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+      modal.classList.remove("hidden");
+    }
+
+    // --- INISIALISASI SAAT HALAMAN DIMUAT ---
+    window.addEventListener("DOMContentLoaded", () => {
+      // Periksa query parameter jika ada tautan join room langsung
+      const urlParams = new URLSearchParams(window.location.search);
+      const joinCode = urlParams.get("join");
+      if (joinCode) {
+        const user = getCurrentUser();
+        if (user && user.role === "siswa") {
+          const db = getDB();
+          const uIdx = db.users.findIndex(u => u.email === user.email);
+          db.users[uIdx].joinedRoomCode = joinCode;
+          saveDB(db);
+          showToast(`Otomatis tergabung ke ruang ${joinCode}!`, "check-circle");
+        }
+      }
+      navigateTo("home");
+    });
+  </script>
+</body>
+</html>
